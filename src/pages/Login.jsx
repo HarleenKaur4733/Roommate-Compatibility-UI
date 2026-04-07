@@ -3,6 +3,7 @@ import { login } from "../api/authApi";
 import { AuthContext } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import loginPageImage from "../assets/loginPageImage.jpg";
+import { handleOnboardingRedirect } from "../utils/onboardingRedirects";
 
 function Login() {
   const { loginUser } = useContext(AuthContext);
@@ -20,7 +21,7 @@ function Login() {
       const res = await login(form);
       loginUser(res.data.accessToken);
       console.log("Login successful");
-      navigate("/dashboard");
+      await handleOnboardingRedirect(navigate);
     } catch (err) {
       alert("Login failed");
     }

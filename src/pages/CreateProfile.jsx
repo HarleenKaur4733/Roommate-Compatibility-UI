@@ -1,6 +1,7 @@
 import { useState } from "react";
-import axiosInstance from "../api/axiosInstance";
+
 import { useNavigate } from "react-router-dom";
+import { createProfile } from "../api/profileApi";
 
 function CreateProfile() {
   const navigate = useNavigate();
@@ -15,18 +16,20 @@ function CreateProfile() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
-    await axiosInstance.post("/profile", profile);
-
+    await createProfile(profile);
+    console.log("Profile created successfully");
     navigate("/preferences");
   };
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-[#d7ccc8] to-[#a1887f] p-10">
       <div className="w-full max-w-lg bg-white/90 shadow-2xl rounded-xl p-10">
-        <h1 className="text-3xl italic font-serif text-[#4e342e] mb-8 text-center leading-relaxed tracking-wide">
-          Create Your Profile
+        <h1 className="text-3xl  text-[#4e342e] mb-1 text-center leading-relaxed tracking-wide">
+          Tell us about yourself!
         </h1>
+        <p className="text-gray-700 mb-8 text-center italic font-serif">
+          This helps us find the best roommate matches for you!
+        </p>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-5">
           <input
