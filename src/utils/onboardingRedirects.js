@@ -9,12 +9,12 @@ export const handleOnboardingRedirect = async (navigate) => {
     return;
   }
 
-  try {
-    await getMyPreferences();
-  } catch (err) {
-    navigate("/preferences");
-    return;
-  }
+  // try {
+  //   await getMyPreferences();
+  // } catch (err) {
+  //   navigate("/preferences");
+  //   return;
+  // }
 
   navigate("/dashboard");
 };

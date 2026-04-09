@@ -6,6 +6,7 @@ import Dashboard from "./pages/Dashboard";
 import ProtectedRoute from "./components/ProtectedRoute";
 import CreateProfile from "./pages/CreateProfile";
 import Preferences from "./pages/Preferences";
+import AppLayout from "./layouts/AppLayout";
 
 function App() {
   return (
@@ -16,29 +17,16 @@ function App() {
         <Route path="/signup" element={<Signup />} />
 
         <Route
-          path="/dashboard"
           element={
             <ProtectedRoute>
-              <Dashboard />
+              <AppLayout />
             </ProtectedRoute>
           }
-        />
-        <Route
-          path="/create-profile"
-          element={
-            <ProtectedRoute>
-              <CreateProfile />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/preferences"
-          element={
-            <ProtectedRoute>
-              <Preferences />
-            </ProtectedRoute>
-          }
-        />
+        >
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/create-profile" element={<CreateProfile />} />
+          <Route path="/preferences" element={<Preferences />} />
+        </Route>
       </Routes>
     </BrowserRouter>
   );
