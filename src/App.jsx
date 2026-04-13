@@ -7,6 +7,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import CreateProfile from "./pages/CreateProfile";
 import Preferences from "./pages/Preferences";
 import AppLayout from "./layouts/AppLayout";
+import Profile from "./pages/Profile";
 
 function App() {
   return (
@@ -26,6 +27,7 @@ function App() {
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/create-profile" element={<CreateProfile />} />
           <Route path="/preferences" element={<Preferences />} />
+          <Route path="/profile" element={<Profile />} />
         </Route>
       </Routes>
     </BrowserRouter>
