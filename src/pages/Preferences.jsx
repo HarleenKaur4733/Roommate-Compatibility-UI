@@ -1,18 +1,21 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { createMyPreferences } from "../api/preferencesApi";
+import {
+  createMyPreferences,
+  getMyPreferences,
+  updateMyPreferences,
+} from "../api/preferencesApi";
 
 function Preferences() {
   const navigate = useNavigate();
 
   const [preferences, setPreferences] = useState({
-    budgetMin: "",
-    budgetMax: "",
+    budget: "",
     sleepSchedule: "",
     smokingPreference: "",
-    cleanliness: "",
-    foodPreference: "",
-    drinking: "",
+    cleanlinessLevel: "",
+    foodHabit: "",
+    drinkingPreference: "",
     guestFrequency: "",
     workMode: "",
   });
@@ -24,10 +27,35 @@ function Preferences() {
     });
   };
 
+  const [isEditMode, setIsEditMode] = useState(false);
+
+  useEffect(() => {
+    async function loadPreferences() {
+      try {
+        const res = await getMyPreferences();
+
+        setPreferences(res.data);
+
+        setIsEditMode(true);
+      } catch {
+        setIsEditMode(false);
+      }
+    }
+
+    loadPreferences();
+  }, []);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    await createMyPreferences(preferences);
-    console.log("Preferences saved successfully");
+
+    if (isEditMode) {
+      await updateMyPreferences(preferences);
+      console.log("Preferences updated");
+    } else {
+      await createMyPreferences(preferences);
+      console.log("Preferences created");
+    }
+
     navigate("/dashboard");
   };
 
@@ -49,16 +77,11 @@ function Preferences() {
             </h3>
             <div className="flex gap-3">
               <input
-                name="budgetMin"
-                placeholder="Min"
+                name="budget"
+                placeholder="Max Budget"
                 onChange={handleChange}
-                className="border rounded-lg p-2 w-1/2 focus:ring-2 focus:ring-[#6d4c41]"
-              />
-              <input
-                name="budgetMax"
-                placeholder="Max"
-                onChange={handleChange}
-                className="border rounded-lg p-2 w-1/2 focus:ring-2 focus:ring-[#6d4c41]"
+                className="border rounded-lg p-2 w-full focus:ring-2 focus:ring-[#6d4c41]"
+                value={preferences.budget || ""}
               />
             </div>
           </div>
@@ -70,6 +93,7 @@ function Preferences() {
             </h3>
             <select
               name="sleepSchedule"
+              value={preferences.sleepSchedule || ""}
               onChange={handleChange}
               className="w-full border rounded-lg p-2 focus:ring-2 focus:ring-[#6d4c41]"
             >
@@ -89,6 +113,7 @@ function Preferences() {
               name="smokingPreference"
               onChange={handleChange}
               className="w-full border rounded-lg p-2 focus:ring-2 focus:ring-[#6d4c41]"
+              value={preferences.smokingPreference || ""}
             >
               <option value="">Select...</option>
               <option value="NO">No</option>
@@ -103,9 +128,10 @@ function Preferences() {
               🧹 Cleanliness
             </h3>
             <select
-              name="cleanliness"
+              name="cleanlinessLevel"
               onChange={handleChange}
               className="w-full border rounded-lg p-2 focus:ring-2 focus:ring-[#6d4c41]"
+              value={preferences.cleanlinessLevel || ""}
             >
               <option value="">Select...</option>
               <option value="LOW">Low</option>
@@ -120,9 +146,10 @@ function Preferences() {
               🍽️ Food Preference
             </h3>
             <select
-              name="foodPreference"
+              name="foodHabit"
               onChange={handleChange}
               className="w-full border rounded-lg p-2 focus:ring-2 focus:ring-[#6d4c41]"
+              value={preferences.foodHabit || ""}
             >
               <option value="">Select...</option>
               <option value="VEG">Veg</option>
@@ -138,9 +165,10 @@ function Preferences() {
               🍷 Drinking
             </h3>
             <select
-              name="drinking"
+              name="drinkingPreference"
               onChange={handleChange}
               className="w-full border rounded-lg p-2 focus:ring-2 focus:ring-[#6d4c41]"
+              value={preferences.drinkingPreference || ""}
             >
               <option value="">Select...</option>
               <option value="YES">Yes</option>
@@ -158,6 +186,7 @@ function Preferences() {
               name="guestFrequency"
               onChange={handleChange}
               className="w-full border rounded-lg p-2 focus:ring-2 focus:ring-[#6d4c41]"
+              value={preferences.guestFrequency || ""}
             >
               <option value="">Select...</option>
               <option value="NEVER">Never</option>
@@ -175,6 +204,7 @@ function Preferences() {
               name="workMode"
               onChange={handleChange}
               className="w-full border rounded-lg p-2 focus:ring-2 focus:ring-[#6d4c41]"
+              value={preferences.workMode || ""}
             >
               <option value="">Select...</option>
               <option value="WFH">Work From Home</option>
@@ -184,8 +214,8 @@ function Preferences() {
           </div>
         </div>
 
-        <button className="mt-8 bg-[#6d4c41] hover:bg-[#5d4037] text-white font-medium rounded-lg py-3 transition w-full">
-          Save Preferences
+        <button className="mt-8 bg-[#6d4c41] text-white rounded-lg py-3 w-full">
+          {isEditMode ? "Update Preferences" : "Save Preferences"}
         </button>
       </form>
     </div>
