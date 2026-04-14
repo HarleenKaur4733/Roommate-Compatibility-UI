@@ -13,9 +13,9 @@ export default function AppLayout() {
   };
 
   return (
-    <div className="flex h-screen bg-gradient-to-br from-[#d7ccc8] to-[#a1887f]">
+    <div className="flex h-screen bg-gradient-to-br from-[#ffffff] to-[#aeaeae]">
       {/* Sidebar */}
-      <aside className="w-64 bg-[#6d4c41] text-white flex flex-col p-6 shadow-lg sticky top-0 h-screen">
+      <aside className="w-64 bg-[#535353] text-white flex flex-col p-6 shadow-lg sticky top-0 h-screen">
         <h1 className="text-2xl font-bold mb-10 text-center">
           Roommate Finder
         </h1>

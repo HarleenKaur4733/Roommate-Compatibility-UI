@@ -152,8 +152,8 @@ function Preferences() {
               value={preferences.foodHabit || ""}
             >
               <option value="">Select...</option>
-              <option value="VEG">Veg</option>
-              <option value="NON_VEG">Non-Veg</option>
+              <option value="VEGETARIAN">Veg</option>
+              <option value="NON_VEGETARIAN">Non-Veg</option>
               <option value="VEGAN">Vegan</option>
               <option value="ANY">Any</option>
             </select>
