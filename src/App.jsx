@@ -8,6 +8,7 @@ import CreateProfile from "./pages/CreateProfile";
 import Preferences from "./pages/Preferences";
 import AppLayout from "./layouts/AppLayout";
 import Profile from "./pages/Profile";
+import Connections from "./pages/Connections";
 
 function App() {
   return (
@@ -28,6 +29,7 @@ function App() {
           <Route path="/create-profile" element={<CreateProfile />} />
           <Route path="/preferences" element={<Preferences />} />
           <Route path="/profile" element={<Profile />} />
+          <Route path="/connections" element={<Connections />} />
         </Route>
       </Routes>
     </BrowserRouter>
