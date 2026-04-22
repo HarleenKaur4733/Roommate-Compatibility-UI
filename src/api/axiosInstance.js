@@ -2,7 +2,7 @@ import axios from "axios";
 
 // automatically attaches JWT to requests
 const axiosInstance = axios.create({
-  baseURL: "http://localhost:8080",
+  baseURL: "https://roommate-compatibility-app.onrender.com",
 });
 
 axiosInstance.interceptors.request.use((config) => {

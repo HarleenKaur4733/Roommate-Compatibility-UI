@@ -8,6 +8,7 @@ import {
   getMyRequests,
   acceptMatchRequest,
   rejectMatchRequest,
+  getMyConnections,
 } from "../api/matchRequestApi";
 import { AuthContext } from "../context/AuthContext";
 
@@ -16,9 +17,19 @@ export default function Dashboard() {
   const [profiles, setProfiles] = useState([]);
   const [suggestions, setSuggestions] = useState([]);
   const [sentRequests, setSentRequests] = useState(new Set());
+  const [connectedUserIds, setConnectedUserIds] = useState(new Set());
   const [incomingRequests, setIncomingRequests] = useState([]);
-  const [activeTab, setActiveTab] = useState("discover"); // "discover" | "requests"
+  const [activeTab, setActiveTab] = useState("discover");
   const [actionLoading, setActionLoading] = useState({});
+
+  /**
+   * Spring Security JWTs commonly use "sub" for the subject (email or id).
+   * Try sub → id → userId in order; coerce to string for safe comparison.
+   */
+  const getMyId = () => {
+    if (!user) return null;
+    return String(user.userId ?? "");
+  };
 
   const handleSendRequest = async (userId) => {
     try {
@@ -29,11 +40,15 @@ export default function Dashboard() {
     }
   };
 
-  const handleAccept = async (requestId, senderId) => {
+  const handleAccept = async (requestId) => {
     setActionLoading((prev) => ({ ...prev, [requestId]: "accepting" }));
     try {
       await acceptMatchRequest(requestId);
+      const accepted = incomingRequests.find((r) => r.id === requestId);
       setIncomingRequests((prev) => prev.filter((r) => r.id !== requestId));
+      if (accepted) {
+        setConnectedUserIds((prev) => new Set(prev).add(accepted.sender.id));
+      }
     } catch {
       alert("Failed to accept request.");
     } finally {
@@ -55,39 +70,59 @@ export default function Dashboard() {
 
   useEffect(() => {
     async function loadData() {
+      // 1. Sent requests
       try {
         const sentRes = await getSentRequests();
-        const alreadySentIds = new Set(sentRes.data.map((r) => r.receiver.id));
-        setSentRequests(alreadySentIds);
+        setSentRequests(new Set(sentRes.data.map((r) => r.receiver.id)));
       } catch {}
 
+      // 2. Incoming pending requests
       try {
         const reqRes = await getMyRequests();
         setIncomingRequests(reqRes.data.filter((r) => r.status === "PENDING"));
       } catch {}
 
+      // 3. Connections — resolve the OTHER person using decoded JWT id
+      try {
+        const connRes = await getMyConnections();
+        const myId = getMyId();
+        const otherIds = new Set(
+          connRes.data.map((conn) =>
+            String(conn.sender.id) === myId ? conn.receiver.id : conn.sender.id,
+          ),
+        );
+        setConnectedUserIds(otherIds);
+      } catch {}
+
+      // 4. Profiles / suggestions
       try {
         await getMyPreferences();
         const res = await getMatchSuggestions();
         setSuggestions(res.data);
         setProfiles(res.data);
       } catch {
-        const res = await getAllProfiles();
-        setProfiles(res.data);
+        try {
+          const res = await getAllProfiles();
+          setProfiles(res.data);
+        } catch {}
       }
     }
     loadData();
-  }, []);
+  }, [user]); // re-run if user changes (e.g. after login)
 
   const hasSuggestions = suggestions && suggestions.length > 0;
   const displayList = hasSuggestions ? suggestions : profiles;
 
-  const getInitials = (email) => (email ? email.charAt(0).toUpperCase() : "U");
+  const getCardState = (userId) => {
+    if (connectedUserIds.has(userId)) return "connected";
+    if (sentRequests.has(userId)) return "sent";
+    return "none";
+  };
 
   return (
     <div
       style={{
-        padding: "32px 32px",
+        padding: "32px",
         maxWidth: 1100,
         margin: "0 auto",
         fontFamily: "'Inter', sans-serif",
@@ -171,7 +206,6 @@ export default function Dashboard() {
       <div
         style={{
           display: "flex",
-          gap: 0,
           borderBottom: "1px solid #e2e8f0",
           marginTop: 20,
           marginBottom: 24,
@@ -242,8 +276,9 @@ export default function Dashboard() {
               const initials = item.name
                 ? item.name.charAt(0).toUpperCase()
                 : "U";
-              const isRequestSent = sentRequests.has(userId);
+              const cardState = getCardState(userId);
               const score = item.compatibilityScore;
+              const isConnected = cardState === "connected";
 
               const scoreColor =
                 score >= 70 ? "#16a34a" : score >= 40 ? "#2563eb" : "#9ca3af";
@@ -251,13 +286,15 @@ export default function Dashboard() {
                 score >= 70 ? "#f0fdf4" : score >= 40 ? "#eff6ff" : "#f9fafb";
               const scoreBorder =
                 score >= 70 ? "#bbf7d0" : score >= 40 ? "#bfdbfe" : "#e5e7eb";
+              const cardBorderDefault = isConnected ? "#bbf7d0" : "#f1f5f9";
+              const cardBorderHover = isConnected ? "#86efac" : "#e2e8f0";
 
               return (
                 <div
                   key={userId}
                   style={{
                     background: "#ffffff",
-                    border: "1.5px solid #f1f5f9",
+                    border: `1.5px solid ${cardBorderDefault}`,
                     borderRadius: 16,
                     padding: 20,
                     display: "flex",
@@ -268,14 +305,50 @@ export default function Dashboard() {
                   onMouseEnter={(e) => {
                     e.currentTarget.style.boxShadow =
                       "0 4px 20px rgba(0,0,0,0.07)";
-                    e.currentTarget.style.borderColor = "#e2e8f0";
+                    e.currentTarget.style.borderColor = cardBorderHover;
                   }}
                   onMouseLeave={(e) => {
                     e.currentTarget.style.boxShadow = "none";
-                    e.currentTarget.style.borderColor = "#f1f5f9";
+                    e.currentTarget.style.borderColor = cardBorderDefault;
                   }}
                 >
-                  {/* Score badge */}
+                  {isConnected && (
+                    <div
+                      style={{
+                        position: "absolute",
+                        top: 12,
+                        left: 12,
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 4,
+                        background: "#f0fdf4",
+                        border: "1px solid #bbf7d0",
+                        borderRadius: 99,
+                        padding: "2px 8px",
+                      }}
+                    >
+                      <svg width="9" height="9" viewBox="0 0 24 24" fill="none">
+                        <circle cx="12" cy="12" r="10" fill="#22c55e" />
+                        <path
+                          d="M8 12l3 3 5-5"
+                          stroke="white"
+                          strokeWidth="2.5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                      <span
+                        style={{
+                          fontSize: 10,
+                          fontWeight: 600,
+                          color: "#15803d",
+                        }}
+                      >
+                        Connected
+                      </span>
+                    </div>
+                  )}
+
                   {score !== undefined && (
                     <div
                       style={{
@@ -304,26 +377,27 @@ export default function Dashboard() {
                     </div>
                   )}
 
-                  {/* Avatar */}
                   <div
                     style={{
                       width: 46,
                       height: 46,
                       borderRadius: "50%",
-                      background: "linear-gradient(135deg, #dbeafe, #bfdbfe)",
+                      background: isConnected
+                        ? "linear-gradient(135deg, #d1fae5, #a7f3d0)"
+                        : "linear-gradient(135deg, #dbeafe, #bfdbfe)",
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
                       fontSize: 18,
                       fontWeight: 700,
-                      color: "#1d4ed8",
+                      color: isConnected ? "#065f46" : "#1d4ed8",
                       marginBottom: 12,
+                      marginTop: isConnected ? 26 : 0,
                     }}
                   >
                     {initials}
                   </div>
 
-                  {/* Name + meta */}
                   <h3
                     style={{
                       fontSize: 14,
@@ -400,7 +474,6 @@ export default function Dashboard() {
                     }}
                   />
 
-                  {/* Preference pills */}
                   {item.matchingPrefernces?.length > 0 && (
                     <div
                       style={{
@@ -428,8 +501,44 @@ export default function Dashboard() {
                     </div>
                   )}
 
-                  {/* CTA */}
-                  {isRequestSent ? (
+                  {cardState === "connected" && (
+                    <button
+                      disabled
+                      style={{
+                        width: "100%",
+                        padding: "9px",
+                        borderRadius: 9,
+                        fontSize: 13,
+                        fontWeight: 500,
+                        background: "#f0fdf4",
+                        border: "1.5px solid #bbf7d0",
+                        color: "#15803d",
+                        cursor: "default",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: 6,
+                      }}
+                    >
+                      <svg
+                        width="13"
+                        height="13"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                      >
+                        <circle cx="12" cy="12" r="10" fill="#22c55e" />
+                        <path
+                          d="M8 12l3 3 5-5"
+                          stroke="white"
+                          strokeWidth="2.5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                      In your connections
+                    </button>
+                  )}
+                  {cardState === "sent" && (
                     <button
                       disabled
                       style={{
@@ -471,7 +580,8 @@ export default function Dashboard() {
                       </svg>
                       Request sent
                     </button>
-                  ) : (
+                  )}
+                  {cardState === "none" && (
                     <button
                       onClick={() => handleSendRequest(userId)}
                       style={{
@@ -616,7 +726,6 @@ export default function Dashboard() {
                       gap: 16,
                     }}
                   >
-                    {/* Avatar */}
                     <div
                       style={{
                         width: 46,
@@ -634,8 +743,6 @@ export default function Dashboard() {
                     >
                       {initials}
                     </div>
-
-                    {/* Info */}
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <p
                         style={{
@@ -656,8 +763,6 @@ export default function Dashboard() {
                         })}
                       </p>
                     </div>
-
-                    {/* Pending pill */}
                     <span
                       style={{
                         fontSize: 11,
@@ -671,8 +776,6 @@ export default function Dashboard() {
                     >
                       Pending
                     </span>
-
-                    {/* Actions */}
                     <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
                       <button
                         onClick={() => handleReject(req.id)}
@@ -703,7 +806,7 @@ export default function Dashboard() {
                         {isRejecting ? "Declining..." : "Decline"}
                       </button>
                       <button
-                        onClick={() => handleAccept(req.id, sender.id)}
+                        onClick={() => handleAccept(req.id)}
                         disabled={isAccepting || isRejecting}
                         style={{
                           padding: "8px 16px",
@@ -760,9 +863,7 @@ export default function Dashboard() {
         </>
       )}
 
-      <style>{`
-        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-      `}</style>
+      <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
     </div>
   );
 }

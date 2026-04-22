@@ -21,11 +21,31 @@ export default function Connections() {
     load();
   }, []);
 
-  // Resolve the "other" person relative to current user
+  /**
+   * JWT payloads vary by backend. Try the most common claims in order:
+   *   sub (Spring Security default) → id → userId
+   * All are coerced to string for safe comparison against the API's numeric ids.
+   */
+  const getMyId = () => {
+    if (!user) return null;
+    return String(user.userId ?? "");
+  };
+
   const getOtherUser = (conn) => {
-    const isSender = conn.sender.id === user?.id;
+    const myId = getMyId();
+    const isSender = String(conn.sender.id) === myId;
+    console.log("my id", myId);
+    console.log("Sender Id", String(conn.sender.id));
     return isSender ? conn.receiver : conn.sender;
   };
+
+  const avatarPalette = [
+    { bg: "linear-gradient(135deg, #dbeafe, #bfdbfe)", text: "#1d4ed8" },
+    { bg: "linear-gradient(135deg, #d1fae5, #a7f3d0)", text: "#065f46" },
+    { bg: "linear-gradient(135deg, #ede9fe, #ddd6fe)", text: "#5b21b6" },
+    { bg: "linear-gradient(135deg, #fce7f3, #fbcfe8)", text: "#9d174d" },
+    { bg: "linear-gradient(135deg, #fef3c7, #fde68a)", text: "#92400e" },
+  ];
 
   return (
     <div
@@ -36,7 +56,6 @@ export default function Connections() {
         fontFamily: "'Inter', sans-serif",
       }}
     >
-      {/* Header */}
       <div style={{ marginBottom: 28 }}>
         <h2
           style={{
@@ -54,7 +73,6 @@ export default function Connections() {
         </p>
       </div>
 
-      {/* Loading */}
       {loading && (
         <div
           style={{
@@ -93,7 +111,6 @@ export default function Connections() {
         </div>
       )}
 
-      {/* Empty state */}
       {!loading && connections.length === 0 && (
         <div style={{ textAlign: "center", padding: "80px 0" }}>
           <div
@@ -140,277 +157,261 @@ export default function Connections() {
         </div>
       )}
 
-      {/* Stats bar */}
       {!loading && connections.length > 0 && (
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 6,
-            marginBottom: 20,
-          }}
-        >
+        <>
+          <div style={{ marginBottom: 20 }}>
+            <div
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                background: "#eff6ff",
+                border: "1px solid #bfdbfe",
+                borderRadius: 20,
+                padding: "5px 14px",
+              }}
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+                <path
+                  d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"
+                  stroke="#3b82f6"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                />
+                <circle cx="9" cy="7" r="4" stroke="#3b82f6" strokeWidth="2" />
+                <path
+                  d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"
+                  stroke="#3b82f6"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                />
+              </svg>
+              <span style={{ fontSize: 12, fontWeight: 600, color: "#1d4ed8" }}>
+                {connections.length}{" "}
+                {connections.length === 1 ? "connection" : "connections"}
+              </span>
+            </div>
+          </div>
+
           <div
             style={{
-              background: "#eff6ff",
-              border: "1px solid #bfdbfe",
-              borderRadius: 20,
-              padding: "5px 14px",
-              display: "flex",
-              alignItems: "center",
-              gap: 6,
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
+              gap: 14,
             }}
           >
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
-              <path
-                d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"
-                stroke="#3b82f6"
-                strokeWidth="2"
-                strokeLinecap="round"
-              />
-              <circle cx="9" cy="7" r="4" stroke="#3b82f6" strokeWidth="2" />
-              <path
-                d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"
-                stroke="#3b82f6"
-                strokeWidth="2"
-                strokeLinecap="round"
-              />
-            </svg>
-            <span style={{ fontSize: 12, fontWeight: 600, color: "#1d4ed8" }}>
-              {connections.length}{" "}
-              {connections.length === 1 ? "connection" : "connections"}
-            </span>
-          </div>
-        </div>
-      )}
+            {connections.map((conn) => {
+              const other = getOtherUser(conn);
+              const initials = other.email?.charAt(0).toUpperCase() || "U";
+              const palette =
+                avatarPalette[other.id % avatarPalette.length] ||
+                avatarPalette[0];
+              const connectedOn = new Date(conn.createdAt).toLocaleDateString(
+                "en-IN",
+                {
+                  day: "numeric",
+                  month: "short",
+                  year: "numeric",
+                },
+              );
 
-      {/* Connection cards */}
-      {!loading && connections.length > 0 && (
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
-            gap: 14,
-          }}
-        >
-          {connections.map((conn) => {
-            const other = getOtherUser(conn);
-            const initials = other.email?.charAt(0).toUpperCase() || "U";
-            const connectedOn = new Date(conn.createdAt).toLocaleDateString(
-              "en-IN",
-              {
-                day: "numeric",
-                month: "short",
-                year: "numeric",
-              },
-            );
-
-            const avatarColors = [
-              {
-                bg: "linear-gradient(135deg, #dbeafe, #bfdbfe)",
-                text: "#1d4ed8",
-              },
-              {
-                bg: "linear-gradient(135deg, #d1fae5, #a7f3d0)",
-                text: "#065f46",
-              },
-              {
-                bg: "linear-gradient(135deg, #ede9fe, #ddd6fe)",
-                text: "#5b21b6",
-              },
-              {
-                bg: "linear-gradient(135deg, #fce7f3, #fbcfe8)",
-                text: "#9d174d",
-              },
-            ];
-            const colorPick =
-              avatarColors[other.id % avatarColors.length] || avatarColors[0];
-
-            return (
-              <div
-                key={conn.id}
-                style={{
-                  background: "#ffffff",
-                  border: "1.5px solid #f1f5f9",
-                  borderRadius: 16,
-                  padding: "20px",
-                  display: "flex",
-                  flexDirection: "column",
-                  transition: "box-shadow 0.15s, border-color 0.15s",
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.boxShadow =
-                    "0 4px 20px rgba(0,0,0,0.07)";
-                  e.currentTarget.style.borderColor = "#e2e8f0";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.boxShadow = "none";
-                  e.currentTarget.style.borderColor = "#f1f5f9";
-                }}
-              >
-                {/* Top row: avatar + connected badge */}
+              return (
                 <div
+                  key={conn.id}
                   style={{
+                    background: "#ffffff",
+                    border: "1.5px solid #f1f5f9",
+                    borderRadius: 16,
+                    padding: "20px",
                     display: "flex",
-                    alignItems: "flex-start",
-                    justifyContent: "space-between",
-                    marginBottom: 14,
+                    flexDirection: "column",
+                    transition: "box-shadow 0.15s, border-color 0.15s",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.boxShadow =
+                      "0 4px 20px rgba(0,0,0,0.07)";
+                    e.currentTarget.style.borderColor = "#e2e8f0";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.boxShadow = "none";
+                    e.currentTarget.style.borderColor = "#f1f5f9";
                   }}
                 >
                   <div
                     style={{
-                      width: 50,
-                      height: 50,
-                      borderRadius: "50%",
-                      background: colorPick.bg,
                       display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      fontSize: 20,
-                      fontWeight: 700,
-                      color: colorPick.text,
+                      alignItems: "flex-start",
+                      justifyContent: "space-between",
+                      marginBottom: 14,
                     }}
                   >
-                    {initials}
-                  </div>
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 5,
-                      background: "#f0fdf4",
-                      border: "1px solid #bbf7d0",
-                      borderRadius: 20,
-                      padding: "4px 10px",
-                    }}
-                  >
-                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none">
-                      <circle cx="12" cy="12" r="10" fill="#22c55e" />
-                      <path
-                        d="M8 12l3 3 5-5"
-                        stroke="white"
-                        strokeWidth="2.5"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
-                    <span
+                    <div
                       style={{
-                        fontSize: 11,
-                        fontWeight: 600,
-                        color: "#15803d",
+                        width: 50,
+                        height: 50,
+                        borderRadius: "50%",
+                        background: palette.bg,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontSize: 20,
+                        fontWeight: 700,
+                        color: palette.text,
                       }}
                     >
-                      Connected
-                    </span>
+                      {initials}
+                    </div>
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 5,
+                        background: "#f0fdf4",
+                        border: "1px solid #bbf7d0",
+                        borderRadius: 20,
+                        padding: "4px 10px",
+                      }}
+                    >
+                      <svg
+                        width="11"
+                        height="11"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                      >
+                        <circle cx="12" cy="12" r="10" fill="#22c55e" />
+                        <path
+                          d="M8 12l3 3 5-5"
+                          stroke="white"
+                          strokeWidth="2.5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                      <span
+                        style={{
+                          fontSize: 11,
+                          fontWeight: 600,
+                          color: "#15803d",
+                        }}
+                      >
+                        Connected
+                      </span>
+                    </div>
                   </div>
-                </div>
 
-                {/* Email */}
-                <h3
-                  style={{
-                    fontSize: 14,
-                    fontWeight: 600,
-                    color: "#0f172a",
-                    margin: "0 0 4px",
-                  }}
-                >
-                  {other.email}
-                </h3>
-
-                <div
-                  style={{
-                    borderTop: "1px solid #f1f5f9",
-                    margin: "14px 0 10px",
-                  }}
-                />
-
-                {/* Meta row */}
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                  }}
-                >
-                  <div
-                    style={{ display: "flex", alignItems: "center", gap: 5 }}
-                  >
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
-                      <rect
-                        x="3"
-                        y="4"
-                        width="18"
-                        height="18"
-                        rx="2"
-                        stroke="#94a3b8"
-                        strokeWidth="1.5"
-                      />
-                      <path
-                        d="M16 2v4M8 2v4M3 10h18"
-                        stroke="#94a3b8"
-                        strokeWidth="1.5"
-                        strokeLinecap="round"
-                      />
-                    </svg>
-                    <span style={{ fontSize: 11, color: "#94a3b8" }}>
-                      Since {connectedOn}
-                    </span>
-                  </div>
-                  <button
-                    onClick={() =>
-                      (window.location.href = `mailto:${other.email}`)
-                    }
+                  <h3
                     style={{
-                      fontSize: 11,
-                      fontWeight: 500,
-                      background: "#eff6ff",
-                      border: "1px solid #bfdbfe",
-                      color: "#2563eb",
-                      borderRadius: 8,
-                      padding: "5px 10px",
-                      cursor: "pointer",
+                      fontSize: 14,
+                      fontWeight: 600,
+                      color: "#0f172a",
+                      margin: "0 0 4px",
+                      wordBreak: "break-all",
+                    }}
+                  >
+                    {other.email}
+                  </h3>
+
+                  <div
+                    style={{
+                      borderTop: "1px solid #f1f5f9",
+                      margin: "14px 0 10px",
+                    }}
+                  />
+
+                  <div
+                    style={{
                       display: "flex",
                       alignItems: "center",
-                      gap: 4,
-                      transition: "background 0.15s",
+                      justifyContent: "space-between",
                     }}
-                    onMouseEnter={(e) =>
-                      (e.currentTarget.style.background = "#dbeafe")
-                    }
-                    onMouseLeave={(e) =>
-                      (e.currentTarget.style.background = "#eff6ff")
-                    }
                   >
-                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none">
-                      <rect
-                        x="2"
-                        y="4"
-                        width="20"
-                        height="16"
-                        rx="2"
-                        stroke="#2563eb"
-                        strokeWidth="1.5"
-                      />
-                      <path
-                        d="M2 7l10 7 10-7"
-                        stroke="#2563eb"
-                        strokeWidth="1.5"
-                        strokeLinecap="round"
-                      />
-                    </svg>
-                    Message
-                  </button>
+                    <div
+                      style={{ display: "flex", alignItems: "center", gap: 5 }}
+                    >
+                      <svg
+                        width="12"
+                        height="12"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                      >
+                        <rect
+                          x="3"
+                          y="4"
+                          width="18"
+                          height="18"
+                          rx="2"
+                          stroke="#94a3b8"
+                          strokeWidth="1.5"
+                        />
+                        <path
+                          d="M16 2v4M8 2v4M3 10h18"
+                          stroke="#94a3b8"
+                          strokeWidth="1.5"
+                          strokeLinecap="round"
+                        />
+                      </svg>
+                      <span style={{ fontSize: 11, color: "#94a3b8" }}>
+                        Since {connectedOn}
+                      </span>
+                    </div>
+                    <button
+                      onClick={() =>
+                        (window.location.href = `mailto:${other.email}`)
+                      }
+                      style={{
+                        fontSize: 11,
+                        fontWeight: 500,
+                        background: "#eff6ff",
+                        border: "1px solid #bfdbfe",
+                        color: "#2563eb",
+                        borderRadius: 8,
+                        padding: "5px 10px",
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 4,
+                        transition: "background 0.15s",
+                      }}
+                      onMouseEnter={(e) =>
+                        (e.currentTarget.style.background = "#dbeafe")
+                      }
+                      onMouseLeave={(e) =>
+                        (e.currentTarget.style.background = "#eff6ff")
+                      }
+                    >
+                      <svg
+                        width="11"
+                        height="11"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                      >
+                        <rect
+                          x="2"
+                          y="4"
+                          width="20"
+                          height="16"
+                          rx="2"
+                          stroke="#2563eb"
+                          strokeWidth="1.5"
+                        />
+                        <path
+                          d="M2 7l10 7 10-7"
+                          stroke="#2563eb"
+                          strokeWidth="1.5"
+                          strokeLinecap="round"
+                        />
+                      </svg>
+                      Message
+                    </button>
+                  </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        </>
       )}
 
-      <style>{`
-        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-      `}</style>
+      <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
     </div>
   );
 }
